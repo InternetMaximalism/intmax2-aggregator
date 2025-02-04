@@ -1,23 +1,36 @@
 import Redis from "ioredis";
-import type { WithdrawalGroup } from "../types";
+import type { AggregatorType, WithdrawalGroup } from "../types";
 import { RedisClient } from "./redis";
 
-export class WithdrawalManager {
-  private static instance: WithdrawalManager;
+export class RequestManager {
+  private static instance: RequestManager;
   private redis: Redis;
-  private readonly keyPrefix = "withdrawal:";
-  private readonly groupSetKey = "withdrawal:groups";
+  private readonly keyPrefix: string;
+  private readonly groupSetKey: string;
   private readonly expiration = 30 * 60; // NOTE: expiration 30 minutes
 
-  constructor() {
+  constructor(requestName: AggregatorType) {
     this.redis = RedisClient.getInstance().getClient()!;
+    this.keyPrefix = this.getKeyPrefixByType(requestName);
+    this.groupSetKey = `${requestName}:groups`;
   }
 
-  public static getInstance(): WithdrawalManager {
-    if (!WithdrawalManager.instance) {
-      WithdrawalManager.instance = new WithdrawalManager();
+  private getKeyPrefixByType(requestName: AggregatorType): string {
+    const prefixMap: Record<AggregatorType, string> = {
+      withdrawal: "withdrawal-aggregator:",
+      claim: "claim-aggregator:",
+    };
+    return prefixMap[requestName];
+  }
+
+  public static getInstance(requestName: AggregatorType): RequestManager {
+    if (
+      !RequestManager.instance ||
+      RequestManager.instance.keyPrefix !== RequestManager.instance.getKeyPrefixByType(requestName)
+    ) {
+      RequestManager.instance = new RequestManager(requestName);
     }
-    return WithdrawalManager.instance;
+    return RequestManager.instance;
   }
 
   private getKey(id: string): string {

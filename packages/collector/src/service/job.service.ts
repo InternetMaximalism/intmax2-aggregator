@@ -1,48 +1,45 @@
 import { type RequestingWithdrawal, config, logger } from "@intmax2-withdrawal-aggregator/shared";
 import { differenceInMinutes } from "date-fns";
 import { chunkArray } from "../lib/utils";
-import { createWithdrawalGroup, fetchRequestingWithdrawals } from "./withdrawal.service";
+import { createRequestGroup, fetchPendingRequests } from "./request.service";
 
 export const performJob = async (): Promise<void> => {
-  const requestingWithdrawals = await fetchRequestingWithdrawals();
+  logger.info(`Processing for ${config.AGGREGATOR_TYPE}`);
 
-  if (requestingWithdrawals.length === 0) {
-    logger.info("No requesting withdrawals found");
+  const pendingRequests = await fetchPendingRequests();
+
+  if (pendingRequests.length === 0) {
+    logger.info("No pending requests found");
     return;
   }
 
-  const shouldProcess = shouldProcessWithdrawals(requestingWithdrawals);
+  const shouldProcess = shouldProcessRequests(pendingRequests);
   if (!shouldProcess) {
-    logger.info("Conditions not met for processing withdrawals");
+    logger.info("Conditions not met for processing requests");
     return;
   }
 
-  const withdrawalGroups = chunkArray<RequestingWithdrawal>(
-    requestingWithdrawals,
+  const requestGroups = chunkArray<RequestingWithdrawal>(
+    pendingRequests,
     config.WITHDRAWAL_GROUP_SIZE,
   );
 
-  const groupIds = await Promise.all(withdrawalGroups.map(createWithdrawalGroup));
+  const groupIds = await Promise.all(requestGroups.map(createRequestGroup));
 
   logger.info(
-    `Successfully processed requesting withdrawals ${requestingWithdrawals.length} withdrawals and created ${groupIds.length} groups`,
+    `Successfully processed ${pendingRequests.length} ${config.AGGREGATOR_TYPE} and created ${groupIds.length} groups`,
   );
 };
 
-const shouldProcessWithdrawals = (
-  requestingWithdrawals: Array<RequestingWithdrawal & { createdAt: Date }>,
+const shouldProcessRequests = (
+  pendingRequests: Array<RequestingWithdrawal & { createdAt: Date }>,
 ) => {
-  const oldestWithdrawal = requestingWithdrawals[0];
-  const minutesSinceOldestWithdrawal = differenceInMinutes(
-    new Date(),
-    new Date(oldestWithdrawal.createdAt),
-  );
-  const hasEnoughWithdrawals = requestingWithdrawals.length >= config.WITHDRAWAL_MIN_BATCH_SIZE;
-  const isOldEnough = minutesSinceOldestWithdrawal >= config.WITHDRAWAL_MIN_WAIT_MINUTES;
+  const oldestRequest = pendingRequests[0];
+  const minutesSinceOldest = differenceInMinutes(new Date(), new Date(oldestRequest.createdAt));
+  const hasEnoughRequests = pendingRequests.length >= config.WITHDRAWAL_MIN_BATCH_SIZE;
+  const isOldEnough = minutesSinceOldest >= config.WITHDRAWAL_MIN_WAIT_MINUTES;
 
-  logger.info(
-    `shouldProcessWithdrawals hasEnoughWithdrawals: ${hasEnoughWithdrawals} isOldEnough: ${isOldEnough}`,
-  );
+  logger.info(`shouldProcess hasEnoughRequests: ${hasEnoughRequests} isOldEnough: ${isOldEnough}`);
 
-  return hasEnoughWithdrawals || isOldEnough;
+  return hasEnoughRequests || isOldEnough;
 };

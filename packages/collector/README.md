@@ -16,3 +16,9 @@ yarn workspace collector dev
 # build
 yarn build
 ```
+
+## Env
+
+```sh
+AGGREGATOR_TYPE=withdrawal|claim
+```

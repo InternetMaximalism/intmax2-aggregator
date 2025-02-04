@@ -39,6 +39,11 @@ export const config = cleanEnv(process.env, {
   WITHDRAWAL_GROUP_SIZE: num({ default: 50 }),
   WITHDRAWAL_MIN_BATCH_SIZE: num({ default: 5 }),
   WITHDRAWAL_MIN_WAIT_MINUTES: num({ default: 5 }), // 5 minutes
+  // collector
+  AGGREGATOR_TYPE: str({
+    choices: ["withdrawal", "claim"],
+    default: "withdrawal",
+  }),
   // scroll
   SCROLL_GAS_MULTIPLIER: num({ default: 2 }), // for l1 fee
 });

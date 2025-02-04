@@ -3,3 +3,5 @@ export interface RedisConfig {
   port: number;
   password?: string;
 }
+
+export type AggregatorType = "withdrawal" | "claim";

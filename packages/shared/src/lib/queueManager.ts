@@ -1,9 +1,9 @@
 import Queue, { Job, type JobOptions, type QueueOptions, Queue as QueueType } from "bull";
 import { config } from "../config";
-import { logger } from "../lib";
+import { logger } from "./logger";
+import { AggregatorType } from "../types";
 
 type JobType = "processBatch";
-type QueueNameType = "withdrawal-aggregator";
 
 interface JobPayload {
   groupId: string;
@@ -16,7 +16,7 @@ export interface QueueJobData {
 
 export class QueueManager {
   private static instance: QueueManager;
-
+  private queueName: AggregatorType;
   private queue: QueueType<QueueJobData>;
   private readonly defaultJobOptions: JobOptions = {
     attempts: 3,
@@ -27,7 +27,8 @@ export class QueueManager {
     removeOnComplete: true,
   };
 
-  constructor(queueName: QueueNameType, options?: QueueOptions) {
+  constructor(queueName: AggregatorType, options?: QueueOptions) {
+    this.queueName = queueName;
     const defaultOptions: QueueOptions = {};
     this.queue = new Queue<QueueJobData>(queueName, config.REDIS_URL, {
       ...defaultOptions,
@@ -47,8 +48,8 @@ export class QueueManager {
     });
   }
 
-  public static getInstance(queueName: QueueNameType) {
-    if (!QueueManager.instance) {
+  public static getInstance(queueName: AggregatorType) {
+    if (!QueueManager.instance || QueueManager.instance.queueName !== queueName) {
       QueueManager.instance = new QueueManager(queueName);
     }
     return QueueManager.instance;
